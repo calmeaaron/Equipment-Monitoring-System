@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Equipment Monitoring System</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f0f2f5; 
+            margin: 20px; 
+        }
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1.5fr; 
+            gap: 20px; 
+        }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        h1 { 
+            color: #1a73e8; 
+            border-bottom: 2px solid #1a73e8; 
+            padding-bottom: 10px; 
+        }
+        .status-box { 
+            padding: 12px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            transition: all 0.3s ease; 
+        }
+        .Present { 
+            background: #e6ffed; 
+            border-left: 6px solid #28a745; 
+            color: #155724; 
+            font-weight: bold; 
+        }
+        .Missing { 
+            background: #ffeef0; 
+            border-left: 6px solid #d73a49; 
+            color: #721c24; 
+            font-weight: bold; 
+        }
+        #logs { 
+            font-family: 'Courier New', monospace; 
+            height: 400px; 
+            overflow-y: auto; 
+            background: #1b1f23; 
+            color: #e1e4e8; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 2px solid #333; 
+        }
+        .log-entry { 
+            margin-bottom: 8px; 
+            border-bottom: 1px solid #333; 
+            padding-bottom: 4px; 
+            font-size: 0.9em; 
+        }
+        .log-time { 
+            color: #79c0ff; 
+            margin-right: 10px; 
+            font-weight: bold; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Equipment Monitoring System</h1>
+    <div class="grid">
+        <div class="card">
+            <h2>Inventory Dashboard</h2>
+            <div id="status-container">
+                <p id="placeholder">Waiting for AI detections...</p>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Live Activity Logs</h2>
+            <div id="logs">
+                <div class="log-entry">System ready... awaiting data.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Connect to the server
+        var socket = io();
+
+        socket.on('connect', function() {
+            console.log("Connected to Equipment Monitoring System Server!");
+        });
+
+        // Listen for status changes
+        socket.on('status_change', function(data) {
+            console.log("Status Update Received:", data);
+            
+            // Remove placeholder if it exists
+            var placeholder = document.getElementById('placeholder');
+            if (placeholder) placeholder.remove();
+
+            var container = document.getElementById('status-container');
+            var cardId = 'unit-' + data.id;
+            var card = document.getElementById(cardId);
+
+            if (!card) {
+                card = document.createElement('div');
+                card.id = cardId;
+                container.appendChild(card);
+            }
+            
+            card.className = 'status-box ' + data.status;
+            card.innerHTML = `
+                <div>
+                    <small style="color: #666;">MASTER ID: ${data.id}</small><br>
+                    <strong>${data.name.toUpperCase()}</strong>
+                </div>
+                <span>${data.status.toUpperCase()}</span>
+            `;
+        });
+
+        // Listen for log events
+        socket.on('log_event', function(data) {
+            console.log("Log Event Received:", data);
+            var logDiv = document.getElementById('logs');
+            var entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${data.time}]</span> ${data.msg}`;
+            
+            // Put latest logs at the top
+            logDiv.insertBefore(entry, logDiv.firstChild);
+        });
+
+        // Listen for clear events from the /clear route
+        socket.on('clear_all', function() {
+            document.getElementById('status-container').innerHTML = 
+                '<p id="placeholder">Waiting for AI detections...</p>';
+            document.getElementById('logs').innerHTML = 
+                '<div class="log-entry">System ready... awaiting data.</div>';
+            console.log("Dashboard wiped clean.");
+        });
+    </script>
+</body>
+</html>
